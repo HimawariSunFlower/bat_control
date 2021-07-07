@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+</head>
+
+<body>
+    <script src="https://cdn.bootcss.com/jquery/2.0.1/jquery.js"></script>
+    <script src="/static/layui/layui.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="/static/layui/css/layui.css">
+
+    <div class="layui-layout layui-layout-admin site-demo-fixed">
+        <div class="layui-header header header-doc" style="background-color: #393D49;">    
+        </div>
+        <div class="layui-side layui-bg-black">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree site-demo-nav">
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a class="javascript:;" href="javascript:;">命令<i class="layui-icon layui-icon-down layui-nav-more"></i></a>
+                    <dl class="layui-nav-child">
+                        <dd>
+                            <a class="btn">服务端命令</a>
+                        </dd>
+                    </dl>
+                </li>
+                </ul>
+            </div>
+        </div>
+       <div id="info" class="layui-body site-demo" style="margin-left: 10px;">
+
+       </div>
+    </div>
+</body>
+<script type="text/javascript">                    
+    const btn = document.querySelector('.btn');
+    btn.addEventListener('click',asyncCall);
+
+    window.οnlοad=function(){
+        asyncCall()
+    }()
+    
+    printfor =function (data){
+        //todo 拼接成table 
+        round=`  <div class="layui-table-box">
+                <div class="layui-table-header">
+                    <table class="layui-table"> 
+                        <thead>
+                            <tr>
+                                <th>名称</th> <th>备注</th> <th>执行</th>
+                            </tr>
+                        </thead>
+                    </div>
+                        `
+        console.log("data",data)
+        
+        data.forEach(function(val,index){
+            console.log(val,index)
+            round+=`<tr>`
+            round+="<td><a  href='/show?"+val.Id+"' target='_blank'>"+val.Name+"</a></td>" //js 不支持``
+            round+="<td>"+val.Remarks+"</td>"
+            round+="<td>"+"<button id="+val.Id+" type='button'class='layui-btn' onClick=build(this.id) >执行</button>"+"</td>"
+            round+="</tr>"
+        })
+        round+="</table> </div>"
+        document.getElementById("info").innerHTML= round
+    }
+
+    async function asyncCall() {
+        await getData().then(v=>printfor(v));
+    }
+
+    build= function(id){
+        console.log(id)
+        window.open("/build?"+id,"_blank")
+    }
+
+</script>   

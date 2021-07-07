@@ -1,0 +1,6 @@
+[server]
+    [server.demo.xx]
+        Remarks="这是一份demo"
+        Path="D:/Demo/"
+        Name ="demo.bat"
+        Env="D:/Demo/msg/genDemo"
