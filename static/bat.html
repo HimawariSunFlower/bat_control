@@ -6,6 +6,7 @@
 <body>
     <script src="https://cdn.bootcss.com/jquery/2.0.1/jquery.js"></script>
     <script src="/static/layui/layui.js" type="text/javascript"></script>
+    <script src="/static/layer/layer.js" type="text/javascript"></script>
     <link rel="stylesheet" href="/static/layui/css/layui.css">
 
     <div class="layui-layout layui-layout-admin site-demo-fixed">
@@ -29,14 +30,15 @@
 
        </div>
     </div>
+    <div style="display:none" id="eidt-div" style="height: 200px;width: 500px;">
+        <textarea class="layui-textarea" style="margin-left: 15px; width: 450px; height: 180px;"></textarea>
+    </div>
 </body>
 <script type="text/javascript">                    
     const btn = document.querySelector('.btn');
     btn.addEventListener('click',asyncCall);
 
-    window.οnlοad=function(){
-        asyncCall()
-    }()
+
     
     printfor =function (data){
         //todo 拼接成table 
@@ -45,7 +47,7 @@
                     <table class="layui-table"> 
                         <thead>
                             <tr>
-                                <th>名称</th> <th>备注</th> <th>执行</th>
+                                <th>名称</th> <th>备注</th> <th>执行</th> <th>编辑</th> <th>打开目录</th>
                             </tr>
                         </thead>
                     </div>
@@ -54,13 +56,16 @@
         
         data.forEach(function(val,index){
             console.log(val,index)
-            round+=`<tr>`
-            round+="<td><a  href='/show?"+val.Id+"' target='_blank'>"+val.Name+"</a></td>" //js 不支持``
+            round+="<tr id="+val.Id+">"
+            round+="<td><button class='layui-btn layui-btn-primary show'>"+val.Name+"</button></td>" //js 不支持``
             round+="<td>"+val.Remarks+"</td>"
-            round+="<td>"+"<button id="+val.Id+" type='button'class='layui-btn' onClick=build(this.id) >执行</button>"+"</td>"
+            round+="<td>"+"<button  type='button'class='layui-btn build'>执行</button>"+"</td>"
+            round+="<td>"+"<button  type='button'class='layui-btn ' onclick=GetEdit(this.parentElement.parentElement.id)>编辑</button>"+"</td>"
+            round+="<td>"+"<button  type='button'class='layui-btn open'>打开目录</button>"+"</td>"//todo 
             round+="</tr>"
         })
-        round+="</table> </div>"
+        round+="</table>  </div>"
+      
         document.getElementById("info").innerHTML= round
     }
 
@@ -68,9 +73,50 @@
         await getData().then(v=>printfor(v));
     }
 
-    build= function(id){
-        console.log(id)
-        window.open("/build?"+id,"_blank")
+    //动态元素添加事件用 document.on
+    clickOn=function(method){
+        $(document).on('click', '.'+method, function(){
+            $.get('/'+method+'?'+this.parentElement.parentElement.id, {}, function(str){
+                    layer.open({
+                    type: 1,
+                    area: ['500px', '300px'],
+                    content: str.replace(/\n/g,"<br/>")//注意，如果str是object，那么需要字符拼接。
+                });
+            }); 
+        });
+    } 
+
+    GetEdit = function (id){
+        $.get('/show?'+id,function(data){
+            layerOpen(id,data)
+        })
     }
 
+    layerOpen=function(id,data){
+        $("#eidt-div textarea").val(data)
+        layer.confirm('', {
+            title:'编辑',   
+            type: 1,
+            btn: ['保存', '取消'],
+            area: ['500px', '300px'],
+            content: $('#eidt-div'), 
+        },function(index, layero){
+        //按钮【按钮一】的回调
+        str= $("#eidt-div textarea").val()
+        $.post('/edit?'+id, {value:str},function(ret){
+            layer.alert(ret)
+        })
+        }, function(index){
+        //按钮【按钮二】的回调
+        });
+    }
+       
+    window.οnlοad=function(){
+        asyncCall()
+        clickOn("show")
+        clickOn("build")
+        $(document).on('click', '.open', function(){
+            $.get('/open?'+this.parentElement.parentElement.id, {},); 
+        });
+    }()
 </script>   

@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"reflect"
+	"regexp"
 	"runtime"
 	"unsafe"
 
@@ -81,6 +83,8 @@ func main() {
 	mux.Handle("/", http.FileServer(http.FS(fs)))
 	mux.HandleFunc("/build", build)
 	mux.HandleFunc("/show", show)
+	mux.HandleFunc("/open", openDir)
+	mux.HandleFunc("/edit", edit)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -102,9 +106,9 @@ func main() {
 	}
 }
 
+//执行bat
 func build(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.RawQuery
-	fmt.Print(key)
 	val, ok := mycache[key]
 	if !ok {
 		return
@@ -119,6 +123,7 @@ func build(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "charset=utf-8")
+	w.WriteHeader(http.StatusOK)
 	cmd := exec.Command(batPath) //初始化Cmd
 	cmd.Dir = s
 	cmd.Stdout = w
@@ -138,12 +143,11 @@ func build(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err, d_v)
 	}
 
-	w.WriteHeader(http.StatusOK)
 }
 
+//显示内容
 func show(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.RawQuery
-	fmt.Print(key)
 	val, ok := mycache[key]
 	if !ok {
 		return
@@ -158,10 +162,74 @@ func show(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(d_v)
 	}
 	w.Header().Set("Content-Type", "charset=utf-8")
-	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
+}
+
+//打开文件所在目录 only wins
+func openDir(w http.ResponseWriter, r *http.Request) {
+	key := r.URL.RawQuery
+	val, ok := mycache[key]
+	if !ok {
+		return
+	}
+	mid := val.Path
+	if val.Env != "" {
+		mid = val.Env
+	}
+
+	re := regexp.MustCompile(`\/`)
+	rep := re.ReplaceAllString(mid, `\`)
+	//fmt.Println(rep)
+
+	err := exec.Command(`cmd`, `/c`, `explorer`, rep).Start()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+}
+
+//旧文件删除,新文件覆盖
+func edit(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm() //必须先解析
+	data := r.PostForm.Get("value")
+	//fmt.Println(data)
+
+	key := r.URL.RawQuery
+	val, ok := mycache[key]
+	if !ok {
+		return
+	}
+	mid := val.Path + val.Name
+	if val.Env != "" {
+		mid = val.Env + val.Name
+	}
+	f, err := os.OpenFile(mid, os.O_WRONLY|os.O_TRUNC, 0600)
+
+	defer f.Close()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	_, err = f.WriteString(data)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	if err == nil {
+		w.Write(StringBytes("编辑成功"))
+	} else {
+		w.Write(StringBytes("error"))
+	}
+
 }
 
 func BytesString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
+}
+
+func StringBytes(s string) []byte {
+	stringHeader := (*reflect.StringHeader)(unsafe.Pointer(&s))
+	sliceHeader := &reflect.SliceHeader{
+		Data: stringHeader.Data,
+		Cap:  stringHeader.Len,
+		Len:  stringHeader.Len,
+	}
+	return *(*[]byte)(unsafe.Pointer(sliceHeader))
 }
