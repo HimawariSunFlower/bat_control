@@ -57,7 +57,7 @@
         data.forEach(function(val,index){
             console.log(val,index)
             round+="<tr id="+val.Id+">"
-            round+="<td><button class='layui-btn layui-btn-primary show'>"+val.Name+"</button></td>" //js 不支持``
+            round+="<td><i class='layui-icon layui-icon-file show'></i>"+val.Name+"</td>" //js 不支持``
             round+="<td>"+val.Remarks+"</td>"
             round+="<td>"+"<button  type='button'class='layui-btn build'>执行</button>"+"</td>"
             round+="<td>"+"<button  type='button'class='layui-btn ' onclick=GetEdit(this.parentElement.parentElement.id)>编辑</button>"+"</td>"
