@@ -1,17 +1,18 @@
 package main
 
 import (
-	"bytes"
 	"embed"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
+	"strings"
 	"unsafe"
 
 	"github.com/djimenez/iconv-go"
@@ -34,9 +35,8 @@ type RespData struct {
 type Bat struct {
 	Remarks string
 	Path    string
-	Env     string
-	Name    string
-	from    string
+	Name string
+	Mark bool
 }
 
 var (
@@ -45,10 +45,12 @@ var (
 	mycache mapStr
 )
 
-func (m mapStr) GetPushData() []*RespData {
+func (m mapStr) GetPushData(typ int) []*RespData {
 	push := []*RespData{}
 	for k, v := range m {
-		push = append(push, &RespData{Id: k, Name: v.from + "/" + v.Name, Remarks: v.Remarks})
+		if typ == 1 || v.Mark {
+			push = append(push, &RespData{Id: k, Name: v.Name, Remarks: v.Remarks})
+		}
 	}
 	return push
 }
@@ -63,18 +65,23 @@ func main() {
 	viper.ReadInConfig()
 	mycache = make(map[string]*Bat)
 
-	for k1 := range viper.GetStringMapString(server) {
-		for k2 := range viper.GetStringMapString(server + "." + k1) {
-			cor := viper.Sub(server + "." + k1 + "." + k2)
-			bat := &Bat{}
-			cor.Unmarshal(bat)
-			bat.from = k1
-			mycache[server+"."+k1+"."+k2] = bat
+	Marks := viper.GetStringMapString("server")
+	exePath := GetProjectAbsPath(viper.GetString("exePath"))
+
+	for _, v := range viper.GetStringSlice("batPath") {
+		files, _ := ioutil.ReadDir(exePath + v)
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".bat") {
+				mid := &Bat{Name: f.Name(), Path: exePath + v}
+				if val, ok := Marks[f.Name()]; ok {
+					mid.Mark = true
+					mid.Remarks = val
+				}
+				mycache[f.Name()] = mid
+			}
 		}
 	}
-	if runtime.GOOS == "linux" {
-		args = append(args, "--class=Lorca")
-	}
+
 	ui, err := lorca.New("", "", 1024, 500, args...)
 	if err != nil {
 		panic(err)
@@ -114,35 +121,12 @@ func build(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	batPath := val.Path + val.Name
-	batPath2 := val.Env
-	s := val.Path
-
-	if batPath2 != "" {
-		s = batPath2
-		batPath2 += val.Name
-	}
 
 	w.Header().Set("Content-Type", "charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	cmd := exec.Command(batPath) //初始化Cmd
-	cmd.Dir = s
-	cmd.Stdout = w
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if batPath2 != "" {
-		cmd.Args[0] = batPath2
-		cmd.Path = batPath2
-	}
-	if err := cmd.Start(); err != nil {
-		d_v, _ := iconv.ConvertString(BytesString(stderr.Bytes()), "GB2312", "utf-8")
-		fmt.Println(err, d_v)
-	}
-	if err := cmd.Wait(); err != nil {
-		d_v, _ := iconv.ConvertString(BytesString(stderr.Bytes()), "GB2312", "utf-8")
-		fmt.Println(err, d_v)
-	}
-
+	cmd := exec.Command(`cmd.exe`, `/C`, "start "+batPath) //初始化Cmd
+	cmd.Dir = val.Path
+	cmd.Run()
 }
 
 //显示内容
@@ -153,9 +137,6 @@ func show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mid := val.Path + val.Name
-	if val.Env != "" {
-		mid = val.Env + val.Name
-	}
 	resp, err := os.ReadFile(mid)
 	if err != nil {
 		d_v, _ := iconv.ConvertString(err.Error(), "GB2312", "utf-8")
@@ -173,10 +154,6 @@ func openDir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mid := val.Path
-	if val.Env != "" {
-		mid = val.Env
-	}
-
 	re := regexp.MustCompile(`\/`)
 	rep := re.ReplaceAllString(mid, `\`)
 	//fmt.Println(rep)
@@ -199,9 +176,7 @@ func edit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mid := val.Path + val.Name
-	if val.Env != "" {
-		mid = val.Env + val.Name
-	}
+
 	f, err := os.OpenFile(mid, os.O_WRONLY|os.O_TRUNC, 0600)
 
 	defer f.Close()
@@ -232,4 +207,9 @@ func StringBytes(s string) []byte {
 		Len:  stringHeader.Len,
 	}
 	return *(*[]byte)(unsafe.Pointer(sliceHeader))
+}
+
+func GetProjectAbsPath(param string) string {
+	pwd, _ := os.Getwd()
+	return filepath.Join(pwd, param)
 }

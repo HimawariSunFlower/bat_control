@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
+    <title>bat命令执行</title>
 </head>
 
 <body>
@@ -19,7 +20,10 @@
                     <a class="javascript:;" href="javascript:;">命令<i class="layui-icon layui-icon-down layui-nav-more"></i></a>
                     <dl class="layui-nav-child">
                         <dd>
-                            <a class="btn">服务端命令</a>
+                            <a id="btn1">常用命令</a>
+                        </dd>
+                        <dd>
+                            <a id="btn2">所有命令</a>
                         </dd>
                     </dl>
                 </li>
@@ -35,11 +39,9 @@
     </div>
 </body>
 <script type="text/javascript">                    
-    const btn = document.querySelector('.btn');
+    const btn = document.querySelector('#btn1');
     btn.addEventListener('click',asyncCall);
 
-
-    
     printfor =function (data){
         //todo 拼接成table 
         round=`  <div class="layui-table-box">
@@ -47,7 +49,7 @@
                     <table class="layui-table"> 
                         <thead>
                             <tr>
-                                <th>名称</th> <th>备注</th> <th>执行</th> <th>编辑</th> <th>打开目录</th>
+                                <th>名称</th> <th>备注</th> <th>执行</th> <th></th>
                             </tr>
                         </thead>
                     </div>
@@ -60,8 +62,7 @@
             round+="<td><i class='layui-icon layui-icon-file show'></i>"+val.Name+"</td>" //js 不支持``
             round+="<td>"+val.Remarks+"</td>"
             round+="<td>"+"<button  type='button'class='layui-btn build'>执行</button>"+"</td>"
-            round+="<td>"+"<button  type='button'class='layui-btn ' onclick=GetEdit(this.parentElement.parentElement.id)>编辑</button>"+"</td>"
-            round+="<td>"+"<button  type='button'class='layui-btn open'>打开目录</button>"+"</td>"//todo 
+            round+="<td>"+"<button  type='button'class='layui-btn ' onclick=GetEdit(this.parentElement.parentElement.id)>编辑</button> <button  type='button'class='layui-btn open'>打开目录</button>"+"</td>"
             round+="</tr>"
         })
         round+="</table>  </div>"
@@ -70,7 +71,11 @@
     }
 
     async function asyncCall() {
-        await getData().then(v=>printfor(v));
+        await getData(0).then(v=>printfor(v));
+    }
+
+    async function asyncCall1() {
+        await getData(1).then(v=>printfor(v));
     }
 
     //动态元素添加事件用 document.on
@@ -110,13 +115,19 @@
         //按钮【按钮二】的回调
         });
     }
+    NoLayar =function(id){
+        $(document).on('click', '.'+id, function(){
+            $.get('/'+id+'?'+this.parentElement.parentElement.id, {},); 
+        });
+    }
        
     window.οnlοad=function(){
         asyncCall()
         clickOn("show")
-        clickOn("build")
-        $(document).on('click', '.open', function(){
-            $.get('/open?'+this.parentElement.parentElement.id, {},); 
+        NoLayar("build")
+        NoLayar("click")
+        $(document).on('click', '#btn2', function(){
+            asyncCall1()
         });
     }()
 </script>   

@@ -1,6 +1,8 @@
+exePath="../.."#exe程序运行路径
+batPath =["./","./inside/dosometing"]#搜索文件路径
 [server]
-    [server.demo.xx]
-        Remarks="这是一份demo"
-        Path="D:/Demo/"
-        Name ="demo.bat"
-        Env="D:/Demo/msg/genDemo"
+#常用bat
+    "table_gen.bat"="配置表文件生成" 
+    "msg_gen.bat"="msg文件生成"   
+    "clone_gen.bat"="数据库clone文件生成"
+
