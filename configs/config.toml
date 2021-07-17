@@ -1,8 +1,0 @@
-exePath="../.."#exe程序运行路径
-batPath =["./","./inside/dosometing"]#搜索文件路径
-[server]
-#常用bat
-    "table_gen.bat"="配置表文件生成" 
-    "msg_gen.bat"="msg文件生成"   
-    "clone_gen.bat"="数据库clone文件生成"
-

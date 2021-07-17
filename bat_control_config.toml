@@ -1,0 +1,4 @@
+exePath="./"#exe程序运行路径
+batPath =["./"]#搜索bat文件路径
+[server]
+	"example.bat"="this is remarks" #常用bat文件

@@ -21,7 +21,12 @@ import (
 )
 
 const (
-	server = "server"
+	CONFIG      = "bat_control_config.toml"
+	INIT_CONFIG = `exePath="./"#exe程序运行路径
+batPath =["./"]#搜索bat文件路径
+[server]
+	"example.bat"="this is remarks" #常用bat文件
+`
 )
 
 type mapStr map[string]*Bat
@@ -35,6 +40,7 @@ type RespData struct {
 type Bat struct {
 	Remarks string
 	Path    string
+	//Env     string
 	Name string
 	Mark bool
 }
@@ -47,12 +53,47 @@ var (
 
 func (m mapStr) GetPushData(typ int) []*RespData {
 	push := []*RespData{}
+	if typ == 2 {
+		push = append(push, &RespData{Id: CONFIG, Name: m[CONFIG].Name, Remarks: m[CONFIG].Remarks})
+		return push
+	}
+
 	for k, v := range m {
 		if typ == 1 || v.Mark {
+			if k == CONFIG {
+				continue
+			}
 			push = append(push, &RespData{Id: k, Name: v.Name, Remarks: v.Remarks})
 		}
 	}
 	return push
+}
+
+func getBat(path string, i int, Marks map[string]string) {
+	if i > 2 {
+		return
+	}
+	i++
+	files, _ := ioutil.ReadDir(path)
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".bat") {
+			mid := &Bat{Name: f.Name(), Path: path}
+			if val, ok := Marks[f.Name()]; ok {
+				mid.Mark = true
+				mid.Remarks = val
+			}
+			mycache[f.Name()] = mid
+		}
+		if f.IsDir() {
+			inside := ""
+			if strings.HasSuffix(path, "/") {
+				inside = path + f.Name()
+			} else {
+				inside = path + "/" + f.Name()
+			}
+			getBat(inside, i, Marks)
+		}
+	}
 }
 
 func main() {
@@ -61,7 +102,7 @@ func main() {
 
 	viper := viper.New()
 	viper.SetConfigType("toml")
-	viper.SetConfigFile("configs/config.toml")
+	viper.SetConfigFile("bat_control_config.toml")
 	viper.ReadInConfig()
 	mycache = make(map[string]*Bat)
 
@@ -69,20 +110,12 @@ func main() {
 	exePath := GetProjectAbsPath(viper.GetString("exePath"))
 
 	for _, v := range viper.GetStringSlice("batPath") {
-		files, _ := ioutil.ReadDir(exePath + v)
-		for _, f := range files {
-			if strings.HasSuffix(f.Name(), ".bat") {
-				mid := &Bat{Name: f.Name(), Path: exePath + v}
-				if val, ok := Marks[f.Name()]; ok {
-					mid.Mark = true
-					mid.Remarks = val
-				}
-				mycache[f.Name()] = mid
-			}
-		}
+		getBat(exePath+v, 0, Marks)
 	}
 
-	ui, err := lorca.New("", "", 1024, 500, args...)
+	mycache[CONFIG] = &Bat{Path: "./", Name: CONFIG, Remarks: "这是配置文件"}
+
+	ui, err := lorca.New("", "", 1500, 600, args...)
 	if err != nil {
 		panic(err)
 	}
@@ -104,6 +137,7 @@ func main() {
 	ui.Load(fmt.Sprintf("http://%s/static/bat.html", ln.Addr()))
 	ui.Bind("getData", mycache.GetPushData)
 	ui.Bind("url", ln.Addr())
+	ui.Bind("config", CONFIG)
 
 	sigc := make(chan os.Signal)
 	signal.Notify(sigc, os.Interrupt)
@@ -139,8 +173,12 @@ func show(w http.ResponseWriter, r *http.Request) {
 	mid := val.Path + val.Name
 	resp, err := os.ReadFile(mid)
 	if err != nil {
-		d_v, _ := iconv.ConvertString(err.Error(), "GB2312", "utf-8")
-		fmt.Println(d_v)
+		if key != CONFIG {
+			d_v, _ := iconv.ConvertString(err.Error(), "GB2312", "utf-8")
+			fmt.Println(d_v)
+		} else {
+			resp = StringBytes(INIT_CONFIG)
+		}
 	}
 	w.Header().Set("Content-Type", "charset=utf-8")
 	w.Write(resp)
@@ -180,9 +218,10 @@ func edit(w http.ResponseWriter, r *http.Request) {
 	f, err := os.OpenFile(mid, os.O_WRONLY|os.O_TRUNC, 0600)
 
 	defer f.Close()
-	if err != nil {
-		fmt.Println(err.Error())
+	if err != nil && os.IsNotExist(err) {
+		f, err = os.Create(key)
 	}
+
 	_, err = f.WriteString(data)
 	if err != nil {
 		fmt.Println(err.Error())
