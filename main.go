@@ -85,12 +85,7 @@ func getBat(path string, i int, Marks map[string]string) {
 			mycache[f.Name()] = mid
 		}
 		if f.IsDir() {
-			inside := ""
-			if strings.HasSuffix(path, "/") {
-				inside = path + f.Name()
-			} else {
-				inside = path + "/" + f.Name()
-			}
+			inside := spliceDirStr(path, f.Name())
 			getBat(inside, i, Marks)
 		}
 	}
@@ -154,7 +149,8 @@ func build(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	batPath := val.Path + val.Name
+
+	batPath := spliceDirStr(val.Path, val.Name)
 
 	w.Header().Set("Content-Type", "charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -251,4 +247,12 @@ func StringBytes(s string) []byte {
 func GetProjectAbsPath(param string) string {
 	pwd, _ := os.Getwd()
 	return filepath.Join(pwd, param)
+}
+
+func spliceDirStr(left, right string) string {
+	if strings.HasSuffix(left, "/") {
+		return left + right
+	} else {
+		return left + "/" + right
+	}
 }
