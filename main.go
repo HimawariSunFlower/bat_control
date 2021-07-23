@@ -166,7 +166,7 @@ func show(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	mid := val.Path + val.Name
+	mid := spliceDirStr(val.Path, val.Name)
 	resp, err := os.ReadFile(mid)
 	if err != nil {
 		if key != CONFIG {
@@ -209,7 +209,7 @@ func edit(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	mid := val.Path + val.Name
+	mid := spliceDirStr(val.Path, val.Name)
 
 	f, err := os.OpenFile(mid, os.O_WRONLY|os.O_TRUNC, 0600)
 
